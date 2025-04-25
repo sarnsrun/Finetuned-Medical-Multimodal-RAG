@@ -1,1 +1,1 @@
-# Medical-Multi-model-RAG
+# Fine-tuned-multi-modal-rag
