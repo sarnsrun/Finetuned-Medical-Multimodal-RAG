@@ -16,7 +16,8 @@ A processed version of the VQA-RAD dataset, containing only open-ended questions
 4. ROCO Dataset
 Obtained from: https://github.com/razorx89/roco-dataset/tree/master/data
 
-Citations:
+References:
+
 Ben Abacha, A., & Demner-Fushman, D. (2019). A question-entailment approach to question answering. BMC Bioinformatics, 20(1), 511. https://doi.org/10.1186/s12859-019-3119-4
 
 Lau, J. J., Gayen, S., Demner-Fushman, D., & Ben Abacha, A. (2018). VQA-RAD: A dataset of clinically generated visual questions and answers about radiology images. OSF. https://doi.org/10.17605/OSF.IO/89KPS
