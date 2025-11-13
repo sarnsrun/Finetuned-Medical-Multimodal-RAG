@@ -1,0 +1,14 @@
+flask
+gunicorn
+torch
+transformers
+peft
+sentence-transformers
+faiss-cpu
+scikit-learn
+python-Levenshtein
+bert-score
+datasets
+pillow
+numpy
+pandas
