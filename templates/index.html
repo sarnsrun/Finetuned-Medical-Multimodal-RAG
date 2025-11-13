@@ -2,293 +2,360 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI Query and Image Captioning</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedAsk AI | Professional Clinical Assistant</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb', // Medical Blue
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    body {
-      background-color: #0e1a25;
-      color: #d1e9f2;
-      font-family: "Roboto", sans-serif;
+    /* Custom Loader Animation */
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 3px solid #2563eb;
+      width: 24px;
+      height: 24px;
+      -webkit-animation: spin 1s linear infinite; /* Safari */
+      animation: spin 1s linear infinite;
     }
-
-    .navbar {
-      background-color: #1e2e3b;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-
-    .navbar-brand {
-      color: #67d3c2;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 1.5rem;
+    
+    /* Smooth fade transitions */
+    .fade-in {
+      animation: fadeIn 0.3s ease-in-out;
     }
-
-    .navbar-nav .nav-link {
-      color: #d1e9f2;
-    }
-
-    .navbar-nav .nav-link:hover {
-      color: #67d3c2;
-    }
-
-    .header-title {
-      text-align: center;
-      margin: 20px 0;
-    }
-
-    .header-title h1 {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 3.5rem;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-    }
-
-    .header-title p {
-      font-size: 1.5rem;
-      margin-top: 10px;
-      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-    }
-
-    h2 {
-      color: #67d3c2;
-      margin-top: 30px;
-    }
-
-    .card {
-      background-color: #1e2e3b;
-      border: none;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      transition: transform 0.3s;
-    }
-
-    /*.card:hover {
-      transform: scale(1.05);
-    }
-*/
-    .metrics-list {
-      list-style: none;
-      padding-left: 0;
-    }
-
-    .metrics-list li {
-      margin-bottom: 0.25rem;
-    }
-
-    footer {
-      background-color: #1e2e3b;
-      padding: 20px 0;
-      color: #d1e9f2;
-      text-align: center;
-    }
-
-    footer a {
-      color: #67d3c2;
-      margin: 0 10px;
-    }
-
-    footer a:hover {
-      text-decoration: underline;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
-<body>
-  <nav class="navbar navbar-expand-lg">
-    <div class="container">
-      <a class="navbar-brand" href="#">AI Medical Assistant</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="#querySection">Ask a Question</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#imageSection">Upload Image</a>
-          </li>
-        </ul>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <i class="fas fa-heartbeat text-brand-600 text-2xl mr-3"></i>
+          <span class="font-bold text-xl tracking-tight text-slate-900">MedAsk AI</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-xs font-medium px-2.5 py-0.5 rounded bg-brand-100 text-brand-700">
+            Beta v1.0
+          </span>
+        </div>
       </div>
     </div>
   </nav>
 
-  <div class="header-title">
-    <h1 id="mainTitle">AI Medical Assistant</h1>
-    <p>Your intelligent partner for medical queries and image captioning.</p>
+  <div class="text-center pt-12 pb-8 px-4">
+    <h1 id="mainTitle" class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
+      Clinical Intelligence Assistant
+    </h1>
+    <p class="text-lg text-slate-500 max-w-2xl mx-auto">
+      Advanced multimodal analysis for medical queries and diagnostic imaging support.
+    </p>
   </div>
 
-  <div class="container mt-5">
-    <h2>Select Mode:</h2>
-    <div class="mb-4">
-      <select id="modeSelect" class="form-select" aria-label="Select Mode">
-        <option value="query" selected>Ask a Question</option>
-        <option value="caption">Upload Image</option>
-      </select>
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+    
+    <div class="flex justify-center mb-8">
+      <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex">
+        <button id="btn-mode-query" class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md">
+          <i class="fas fa-comment-medical mr-2"></i> Ask Question
+        </button>
+        <button id="btn-mode-caption" class="px-6 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 transition-all duration-200">
+          <i class="fas fa-x-ray mr-2"></i> Analyze Image
+        </button>
+      </div>
     </div>
 
-    <div id="questionSection" class="card p-4">
-      <h2>Ask a Question</h2>
+    <div id="questionSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 fade-in">
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-slate-900 mb-1">Medical Query</h2>
+        <p class="text-sm text-slate-500">Retrieve clinical context from the medical database.</p>
+      </div>
+      
       <form id="queryForm" autocomplete="off">
-        <div class="mb-3">
-          <label for="query" class="form-label">Your Question</label>
-          <input type="text" class="form-control" id="query" placeholder="Enter your question here" required />
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-slate-400"></i>
+          </div>
+          <input type="text" id="query" 
+            class="block w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition shadow-sm" 
+            placeholder="e.g., What are the primary treatments for glioblastoma?" required />
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <div class="mt-4">
+          <button type="submit" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors">
+            Analyze Query
+          </button>
+        </div>
       </form>
-      <div id="queryResult" class="mt-3"></div>
+
+      <div id="queryResult" class="mt-8 hidden"></div>
     </div>
 
-    <div id="imageSection" class="card p-4" style="display: none;">
-  <h2>Visual Question Answering</h2>
-  <form id="captionForm" enctype="multipart/form-data">
-    <div class="mb-3">
-      <label for="image" class="form-label">Upload Image</label>
-      <input type="file" class="form-control" id="image" accept="image/*" required />
+    <div id="imageSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 hidden fade-in">
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-slate-900 mb-1">Visual Diagnostics (VQA)</h2>
+        <p class="text-sm text-slate-500">Upload a scan or medical image for AI analysis.</p>
+      </div>
+
+      <form id="captionForm" enctype="multipart/form-data" class="space-y-4">
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Medical Image</label>
+          <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:bg-slate-50 transition-colors relative">
+            <div class="space-y-1 text-center">
+              <i class="fas fa-cloud-upload-alt text-4xl text-slate-400"></i>
+              <div class="flex text-sm text-slate-600 justify-center">
+                <label for="image" class="relative cursor-pointer rounded-md font-medium text-brand-600 hover:text-brand-500 focus-within:outline-none">
+                  <span>Upload a file</span>
+                  <input id="image" name="image" type="file" class="sr-only" accept="image/*" required onchange="document.getElementById('fileName').innerText = this.files[0].name">
+                </label>
+              </div>
+              <p class="text-xs text-slate-500" id="fileName">PNG, JPG, GIF up to 10MB</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label for="imageQuestion" class="block text-sm font-medium text-slate-700 mb-1">Clinical Question</label>
+          <input type="text" id="imageQuestion" 
+            class="block w-full px-4 py-2.5 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm" 
+            placeholder="e.g., Is there evidence of pleural effusion?" required />
+        </div>
+
+        <button type="submit" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors">
+          Start Analysis
+        </button>
+      </form>
+
+      <div id="captionResult" class="mt-8 hidden"></div>
     </div>
-    <div class="mb-3">
-      <label for="imageQuestion" class="form-label">Enter a Question</label>
-      <input type="text" class="form-control" id="imageQuestion" placeholder="e.g. What abnormality is visible?" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Get Answer</button>
-  </form>
 
-  <div id="captionResult" class="mt-3"></div>  <!-- Add this div -->
+    <div id="feedbackSection" class="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-6 hidden fade-in">
+      <div class="flex items-center mb-4">
+        <div class="bg-orange-100 p-2 rounded-lg mr-3">
+          <i class="fas fa-user-md text-orange-600"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-slate-900">Expert Verification</h3>
+          <p class="text-sm text-slate-500">Help improve the model by providing the correct clinical answer.</p>
+        </div>
+      </div>
 
-</div>
-
-
-
-
-
-    <div id="feedbackSection" class="card p-4 mt-4" style="display: none;">
-      <h2>Feedback</h2>
       <form id="feedbackForm" autocomplete="off">
-        <div class="mb-3">
-          <label for="correctedAnswer" class="form-label">Your Corrected Answer</label>
-          <textarea class="form-control" id="correctedAnswer" rows="3" placeholder="Enter your corrected answer here" required></textarea>
+        <div class="mb-4">
+          <label for="correctedAnswer" class="block text-sm font-medium text-slate-700 mb-1">Corrected Answer</label>
+          <textarea id="correctedAnswer" rows="3" 
+            class="block w-full px-4 py-2 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm" 
+            placeholder="Type the verified medical fact here..." required></textarea>
         </div>
-        <button type="submit" class="btn btn-success">Submit Feedback</button>
+        
+        <div class="flex items-center justify-between">
+            <button type="button" id="retrainButton" class="text-slate-500 hover:text-brand-600 text-sm font-medium flex items-center transition-colors">
+                <i class="fas fa-sync-alt mr-2"></i> Retrain Model
+            </button>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors">
+                Submit Feedback
+            </button>
+        </div>
       </form>
-      <button id="retrainButton" class="btn btn-warning mt-3">Retrain Model</button>
     </div>
-  </div>
 
-  <footer>
-    <div class="container">
-      <p>&copy; 2025 AI Medical Assistant. All rights reserved.</p>
-      <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a>
-      <div>
-        <a href="#" class="fab fa-facebook-f"></a>
-        <a href="#" class="fab fa-twitter"></a>
-        <a href="#" class="fab fa-linkedin-in"></a>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-auto">
+    <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+      <p class="text-sm text-slate-400">&copy; 2025 MedAsk AI. Research Prototype.</p>
+      <div class="flex space-x-6 text-slate-400">
+        <a href="#" class="hover:text-brand-600 transition"><i class="fab fa-github text-lg"></i></a>
+        <a href="#" class="hover:text-brand-600 transition"><i class="fab fa-twitter text-lg"></i></a>
       </div>
     </div>
   </footer>
 
   <script>
     $(document).ready(function () {
-      $("#modeSelect").on("change", function () {
-        const mode = $(this).val();
-        if (mode === "query") {
-          $("#questionSection").show();
-          $("#imageSection").hide();
-          $("#feedbackSection").hide();
-          $("#captionResult").empty();
-          $("#captionForm")[0].reset();
-        } else {
-          $("#questionSection").hide();
-          $("#imageSection").show();
-          $("#queryResult").empty();
-          $("#feedbackSection").hide();
-          $("#queryForm")[0].reset();
-        }
-      });
 
-      // QA submit
+      // Helper: Toggle Tabs Visuals
+      function setActiveTab(mode) {
+        if(mode === 'query') {
+          $('#btn-mode-query').removeClass('text-slate-500 hover:text-slate-900').addClass('bg-brand-600 text-white shadow-md');
+          $('#btn-mode-caption').removeClass('bg-brand-600 text-white shadow-md').addClass('text-slate-500 hover:text-slate-900');
+          
+          $('#questionSection').removeClass('hidden').addClass('fade-in');
+          $('#imageSection').addClass('hidden');
+          $('#feedbackSection').addClass('hidden');
+          $('#captionResult').addClass('hidden').empty();
+          $('#captionForm')[0].reset();
+          $('#fileName').text("PNG, JPG, GIF up to 10MB");
+        } else {
+          $('#btn-mode-caption').removeClass('text-slate-500 hover:text-slate-900').addClass('bg-brand-600 text-white shadow-md');
+          $('#btn-mode-query').removeClass('bg-brand-600 text-white shadow-md').addClass('text-slate-500 hover:text-slate-900');
+          
+          $('#imageSection').removeClass('hidden').addClass('fade-in');
+          $('#questionSection').addClass('hidden');
+          $('#feedbackSection').addClass('hidden');
+          $('#queryResult').addClass('hidden').empty();
+          $('#queryForm')[0].reset();
+        }
+      }
+
+      // Tab Click Handlers
+      $('#btn-mode-query').click(function() { setActiveTab('query'); });
+      $('#btn-mode-caption').click(function() { setActiveTab('caption'); });
+
+      // HTML Generators for Results
+      function generateMetricsHtml(data) {
+        return `
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Levenshtein</div>
+                <div class="text-brand-600 font-mono font-bold text-lg">${data.lev_similarity.toFixed(2)}</div>
+             </div>
+             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Cosine</div>
+                <div class="text-brand-600 font-mono font-bold text-lg">${data.cosine_similarity.toFixed(2)}</div>
+             </div>
+             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Precision</div>
+                <div class="text-brand-600 font-mono font-bold text-lg">${data.precision.toFixed(2)}</div>
+             </div>
+             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Recall</div>
+                <div class="text-brand-600 font-mono font-bold text-lg">${data.recall.toFixed(2)}</div>
+             </div>
+             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">F1 Score</div>
+                <div class="text-brand-600 font-mono font-bold text-lg">${data.f1_score.toFixed(2)}</div>
+             </div>
+          </div>
+        `;
+      }
+
+      function generateResultHtml(generated, reference, metricsHtml) {
+        return `
+           <div class="border-t border-slate-200 pt-6">
+              <h3 class="text-sm font-bold text-brand-600 uppercase tracking-wide mb-2"><i class="fas fa-robot mr-1"></i> AI Generated Answer</h3>
+              <div class="bg-brand-50 text-slate-800 p-4 rounded-lg border border-brand-100 text-lg leading-relaxed mb-6">
+                 ${generated}
+              </div>
+              
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2"><i class="fas fa-database mr-1"></i> Reference Answer</h3>
+              <div class="text-slate-500 text-sm bg-slate-50 p-3 rounded border border-slate-100 italic">
+                 ${reference || "No reference available."}
+              </div>
+              
+              ${metricsHtml}
+           </div>
+        `;
+      }
+
+      function showLoader(targetId) {
+        $(targetId).removeClass('hidden').html(`
+          <div class="flex flex-col items-center justify-center py-10 text-slate-400 animate-pulse">
+            <div class="loader mb-3"></div>
+            <span class="text-sm font-medium">Processing medical data...</span>
+          </div>
+        `);
+      }
+
+      // --- QA Submit ---
       $("#queryForm").on("submit", function (e) {
         e.preventDefault();
-        $("#mainTitle").hide(); // Hide the title
-        $("#queryResult").html("<p>Generating...</p>");
+        showLoader("#queryResult");
+        
         const query = $("#query").val();
         $.ajax({
           url: "/query",
           type: "POST",
           contentType: "application/json",
           data: JSON.stringify({ query }),
-          success: function (response) {
-            const { generated_answer, reference_answer, lev_similarity, cosine_similarity, precision, recall, f1_score } = response;
-            $("#queryResult").html(`
-              <h4>Generated Answer:</h4>
-              <p>${generated_answer}</p>
-              <h4>Reference Answer:</h4>
-              <p>${reference_answer}</p>
-              <h4>Metrics:</h4>
-              <ul class="metrics-list">
-                  <li>Levenshtein Similarity: ${lev_similarity}</li>
-                  <li>Cosine Similarity: ${cosine_similarity}</li>
-                  <li>Precision: ${precision}</li>
-                  <li>Recall: ${recall}</li>
-                  <li>F1 Score: ${f1_score}</li>
-              </ul>
-            `);
-            $("#feedbackSection").show();
+          success: function (res) {
+            const metricsHtml = generateMetricsHtml(res);
+            const content = generateResultHtml(res.generated_answer, res.reference_answer, metricsHtml);
+            $("#queryResult").html(content).addClass('fade-in');
+            $("#feedbackSection").removeClass('hidden');
             $("#feedbackForm")[0].reset();
           },
           error: function () {
-            $("#queryResult").html('<p class="text-danger">Error processing your request.</p>');
+            $("#queryResult").html('<div class="text-red-500 p-4 bg-red-50 rounded-lg border border-red-100 text-center">Error processing request. Please try again.</div>');
           },
         });
       });
 
-      // Caption submit
-$("#captionForm").on("submit", function (e) {
-  e.preventDefault();
-  $("#mainTitle").hide();
-  $("#captionResult").html("<p>Generating...</p>");
+      // --- Caption Submit ---
+      $("#captionForm").on("submit", function (e) {
+        e.preventDefault();
+        showLoader("#captionResult");
 
-  const formData = new FormData();
-  const fileInput = $('#image')[0].files[0];
-  const question = $('#imageQuestion').val();
+        const formData = new FormData();
+        formData.append('image', $('#image')[0].files[0]);
+        formData.append('question', $('#imageQuestion').val());
 
-  formData.append('image', fileInput);
-  formData.append('question', question);
+        $.ajax({
+          url: "/caption",
+          type: "POST",
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function (res) {
+            let ref = res.reference_answer;
+            if (Array.isArray(ref)) ref = ref.join(", "); // Handle list answers
 
-          $.ajax({
-            url: "/caption",
-            type: "POST",
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-              const { generated_caption, reference_answer, lev_similarity, cosine_similarity, precision, recall, f1_score } = response;
-              $("#captionResult").html(`
-                <h4>Generated Answer:</h4>
-                <p>${generated_caption}</p>
-                <h4>Reference Answer:</h4>
-                <p>${reference_answer || "N/A"}</p>
-                <h4>Metrics:</h4>
-                <ul class="metrics-list">
-                    <li>Levenshtein Similarity: ${lev_similarity.toFixed(4)}</li>
-                    <li>Cosine Similarity: ${cosine_similarity.toFixed(4)}</li>
-                    <li>Precision: ${precision.toFixed(4)}</li>
-                    <li>Recall: ${recall.toFixed(4)}</li>
-                    <li>F1 Score: ${f1_score.toFixed(4)}</li>
-                </ul>
-              `);
-            },
-            error: function () {
-              $("#captionResult").html('<p class="text-danger">Error processing your request.</p>');
-            },
-          });
+            const metricsHtml = generateMetricsHtml(res);
+            const content = generateResultHtml(res.generated_caption, ref, metricsHtml);
+            $("#captionResult").html(content).addClass('fade-in');
+          },
+          error: function () {
+             $("#captionResult").html('<div class="text-red-500 p-4 bg-red-50 rounded-lg border border-red-100 text-center">Error processing image. Please try again.</div>');
+          },
         });
+      });
 
-      // QA feedback
+      // --- Feedback Submit ---
       $("#feedbackForm").on("submit", function (e) {
         e.preventDefault();
         const correctedAnswer = $("#correctedAnswer").val();
         const question = $("#query").val();
+        const btn = $(this).find('button[type="submit"]');
+        const origText = btn.text();
+        
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Saving...').prop('disabled', true);
+
         $.ajax({
           url: "/feedback",
           type: "POST",
@@ -296,37 +363,43 @@ $("#captionForm").on("submit", function (e) {
           data: JSON.stringify({
             task_type: "qa",
             user_input: question,
-            model_output: $("#queryResult").find("p").eq(0).text(),
             corrected_output: correctedAnswer,
           }),
           success: function (response) {
-            alert(response.message);
+            btn.html('<i class="fas fa-check"></i> Saved').removeClass('bg-slate-800').addClass('bg-green-600');
+            setTimeout(() => {
+               btn.html(origText).prop('disabled', false).removeClass('bg-green-600').addClass('bg-slate-800');
+               $("#feedbackForm")[0].reset();
+               alert(response.message);
+            }, 1500);
           },
           error: function () {
             alert("Error saving feedback.");
+            btn.html(origText).prop('disabled', false);
           },
         });
       });
 
-      // Retrain
+      // --- Retrain ---
       $("#retrainButton").on("click", function () {
-        $("#retrainButton").prop("disabled", true); // Optional: disable button during retrain
-        $("#retrainButton").text("Retraining model..."); // Show retraining message on button
+        const btn = $(this);
+        const origHtml = btn.html();
+        btn.prop("disabled", true).html('<i class="fas fa-cog fa-spin mr-2"></i> Retraining...');
+        
         $.ajax({
           url: "/retrain",
           type: "POST",
           success: function (response) {
             alert(response.message);
-            $("#retrainButton").prop("disabled", false);
-            $("#retrainButton").text("Retrain Model");
+            btn.prop("disabled", false).html(origHtml);
           },
           error: function () {
             alert("Error initiating model retraining.");
-            $("#retrainButton").prop("disabled", false);
-            $("#retrainButton").text("Retrain Model");
+            btn.prop("disabled", false).html(origHtml);
           },
         });
       });
+
     });
   </script>
 </body>
