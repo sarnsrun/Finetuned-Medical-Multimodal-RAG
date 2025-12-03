@@ -10,7 +10,7 @@ import os
 os.environ["WANDB_DISABLED"] = "true"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-gpt2_model_path = "sarnsrun/gpt2-finetuned"
+gpt2_model_path = "sarnsrun/gpt2-medquad-finetuned"
 gpt2_model = GPT2LMHeadModel.from_pretrained(gpt2_model_path).to(device)
 gpt2_tokenizer = GPT2Tokenizer.from_pretrained(gpt2_model_path)
 

@@ -23,7 +23,6 @@
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            // "Ai Fiqh" style deep dark theme
             background: '#09090b', // Very dark zinc
             sidebar: '#000000',    // Pure black sidebar
             surface: '#18181b',    // Component background
@@ -40,7 +39,7 @@
 
   <style>
     /* Scrollbar Styling */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #52525b; }
@@ -89,7 +88,7 @@
     <div class="p-4 border-t border-border bg-black">
       <div class="flex items-center">
         <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-700">
-          <i class="fas fa-user text-xs"></i>
+          <i class="fas fa-user-md text-xs"></i>
         </div>
         <div class="ml-3">
           <p class="text-sm font-medium text-white">Clinical User</p>
@@ -129,7 +128,7 @@
         </div>
       </div>
 
-      </div>
+    </div>
 
     <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pb-6 pt-10 px-4 md:px-8">
       <div class="max-w-3xl mx-auto">
@@ -177,11 +176,12 @@
 
   <script>
     let isImageMode = false;
+    let currentTaskType = ''; // 'qa' or 'caption'
+    let currentQuestion = ''; // to store the question for feedback
 
     // --- UI HELPERS ---
     function setQuickQuery(text) {
       $('#queryInput').val(text).focus();
-      // Auto submit if you want, or just let user hit enter
     }
 
     function toggleImageMode() {
@@ -210,6 +210,42 @@
       container.scrollTop = container.scrollHeight;
     }
 
+    // --- FEEDBACK FUNCTION ---
+    function submitFeedback(id) {
+        const feedbackInput = $(`#feedback-${id}`);
+        const feedbackBtn = $(`#btn-${id}`);
+        const corrected = feedbackInput.val();
+        
+        if(!corrected) return;
+
+        feedbackBtn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+
+        // We use the global currentTaskType/Question, assuming feedback is for the latest query.
+        // For a more robust solution in a real app, pass these as data-attributes to the button.
+        const payload = {
+            task_type: currentTaskType,
+            user_input: currentQuestion, 
+            corrected_output: corrected
+        };
+
+        $.ajax({
+            url: '/feedback',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function() {
+                feedbackBtn.html('<i class="fas fa-check"></i> Saved').removeClass('bg-zinc-700 hover:bg-zinc-600').addClass('bg-green-600 text-white');
+                setTimeout(() => {
+                   // Optional: close details
+                }, 1500);
+            },
+            error: function() {
+                alert("Failed to save feedback");
+                feedbackBtn.html('Submit').prop('disabled', false);
+            }
+        });
+    }
+
     function createMessage(role, content, metadata = null) {
       const isUser = role === 'user';
       const alignment = isUser ? 'justify-end' : 'justify-start';
@@ -218,40 +254,61 @@
         ? '' 
         : `<div class="w-8 h-8 rounded bg-brand-600 flex-shrink-0 flex items-center justify-center mr-4 mt-1 shadow-lg shadow-blue-900/20"><i class="fas fa-cube text-white text-xs"></i></div>`;
 
+      // Limit height for generated answer (Scrollable)
+      // "max-h-96 overflow-y-auto" ensures we don't spam the screen with tokens
+      const contentHtml = isUser 
+        ? `<div class="leading-relaxed whitespace-pre-wrap">${content}</div>`
+        : `<div class="leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto pr-2 custom-scrollbar">${content}</div>`;
+
       let metricsHtml = '';
       if (metadata && !isUser) {
-        // Professional Citation / Metadata Card
+        const id = Date.now(); // Unique ID for feedback form
+        
         metricsHtml = `
           <div class="mt-4 pt-4 border-t border-zinc-800">
             <details class="group">
-              <summary class="flex items-center text-xs font-medium text-zinc-500 cursor-pointer hover:text-brand-400 transition-colors list-none">
+              <summary class="flex items-center text-xs font-medium text-zinc-500 cursor-pointer hover:text-brand-400 transition-colors list-none select-none">
                 <i class="fas fa-chevron-right text-[10px] mr-2 transition-transform group-open:rotate-90"></i>
-                View Sources & Metrics
+                View Metrics, Reference & Feedback
               </summary>
-              <div class="mt-3 pl-4 border-l-2 border-zinc-800 space-y-3">
-                <div>
-                  <div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Reference Answer</div>
-                  <div class="text-sm text-zinc-400 italic bg-black/30 p-2 rounded border border-zinc-800/50">
-                    "${metadata.reference_answer || 'No reference available'}"
-                  </div>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
+              
+              <div class="mt-3 pl-4 border-l-2 border-zinc-800 space-y-4">
+                
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-2">
                    <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">F1 Score</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.f1_score?.toFixed(2) || '0.00'}</div>
+                      <div class="text-[10px] text-zinc-600 uppercase">Levenshtein</div>
+                      <div class="text-brand-500 font-mono font-bold">${metadata.lev_similarity?.toFixed(2) || '0.00'}</div>
                    </div>
                    <div class="bg-black p-2 rounded border border-zinc-800 text-center">
                       <div class="text-[10px] text-zinc-600 uppercase">Cosine</div>
                       <div class="text-brand-500 font-mono font-bold">${metadata.cosine_similarity?.toFixed(2) || '0.00'}</div>
                    </div>
                    <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">Lev.</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.lev_similarity?.toFixed(2) || '0.00'}</div>
+                      <div class="text-[10px] text-zinc-600 uppercase">Precision</div>
+                      <div class="text-brand-500 font-mono font-bold">${metadata.precision?.toFixed(2) || '0.00'}</div>
+                   </div>
+                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
+                      <div class="text-[10px] text-zinc-600 uppercase">Recall</div>
+                      <div class="text-brand-500 font-mono font-bold">${metadata.recall?.toFixed(2) || '0.00'}</div>
+                   </div>
+                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
+                      <div class="text-[10px] text-zinc-600 uppercase">F1 Score</div>
+                      <div class="text-brand-500 font-mono font-bold">${metadata.f1_score?.toFixed(2) || '0.00'}</div>
                    </div>
                 </div>
+
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Reference Answer</div>
+                  <div class="text-sm text-zinc-400 italic bg-black/30 p-3 rounded border border-zinc-800/50 max-h-40 overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                    "${metadata.reference_answer || 'No reference available'}"
+                  </div>
+                </div>
+
                 <div class="pt-2">
-                   <button onclick="alert('Feedback feature coming in v1.1')" class="text-xs text-zinc-500 hover:text-orange-400 flex items-center">
-                      <i class="far fa-flag mr-1"></i> Flag incorrect answer
+                   <div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Correction / Feedback</div>
+                   <textarea id="feedback-${id}" class="w-full bg-black/50 border border-zinc-800 rounded p-2 text-xs text-zinc-300 focus:border-brand-500/50 focus:outline-none mb-2" rows="2" placeholder="Edit the answer here to improve the model...">${content.replace(/"/g, '&quot;')}</textarea>
+                   <button id="btn-${id}" onclick="submitFeedback(${id})" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700 transition-colors">
+                      Submit Feedback
                    </button>
                 </div>
               </div>
@@ -264,7 +321,7 @@
         <div class="flex ${alignment} message-enter">
           ${!isUser ? avatar : ''}
           <div class="${isUser ? 'max-w-2xl px-5 py-3 rounded-2xl' : 'w-full'} ${bg}">
-            <div class="leading-relaxed whitespace-pre-wrap">${content}</div>
+            ${contentHtml}
             ${metricsHtml}
           </div>
         </div>
@@ -292,6 +349,9 @@
       const input = $('#queryInput');
       const query = input.val().trim();
       if (!query) return;
+
+      currentTaskType = 'qa';
+      currentQuestion = query;
 
       // UI Updates
       $('#welcomeScreen').hide();
@@ -328,6 +388,9 @@
       
       if (!fileInput.files.length || !question) return;
 
+      currentTaskType = 'caption';
+      currentQuestion = question; // For simplicity in this demo, using question as ID
+
       // UI Updates
       $('#welcomeScreen').hide();
       $('#chatContainer').append(createMessage('user', `[Attached Image: ${fileInput.files[0].name}]\n${question}`));
@@ -348,18 +411,22 @@
         contentType: false,
         success: function(res) {
           $('#typingIndicator').remove();
+          
           // Handle list reference answer
           let ref = res.reference_answer;
           if (Array.isArray(ref)) ref = ref.join(", ");
-          res.reference_answer = ref; // normalize for the metadata function
+          res.reference_answer = ref; 
 
-          $('#chatContainer').append(createMessage('ai', res.generated_caption, res));
+          // Logic to grab the right answer key based on app.py response
+          const answerText = res.generated_caption || res.generated_answer;
+
+          $('#chatContainer').append(createMessage('ai', answerText, res));
           scrollToBottom();
           
           // Reset form
           $('#captionForm')[0].reset();
           $('#fileLabel').text("Drop medical image here or click to browse").removeClass('text-brand-400 font-medium');
-          toggleImageMode(); // Switch back to text mode automatically (optional UX choice)
+          toggleImageMode(); 
         },
         error: function() {
           $('#typingIndicator').remove();
