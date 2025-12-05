@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedRAG | Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: { 
+            background: '#000000', 
+            surface: '#09090b', 
+            border: '#27272a',
+            brand: { 500: '#3b82f6', 600: '#2563eb' } 
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-zinc-200 h-screen flex flex-col items-center justify-center p-4 antialiased selection:bg-brand-900 selection:text-brand-100">
+
+  <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/10 blur-[120px] rounded-full"></div>
+      <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
+  </div>
+
+  <div class="w-full max-w-sm bg-surface border border-border rounded-2xl p-8 shadow-2xl shadow-black z-10 relative">
+    
+    <div class="flex flex-col items-center mb-8">
+      <div class="w-12 h-12 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-blue-900/20 mb-4">
+        <i class="fas fa-heartbeat text-xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white tracking-tight">MedRAG</h1>
+      <p class="text-xs text-zinc-500 uppercase tracking-widest mt-1">Clinical Intelligence</p>
+    </div>
+
+    <form id="loginForm" class="space-y-4">
+      <div id="errorMsg" class="hidden bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center">
+        Invalid credentials.
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-zinc-400 mb-1.5 ml-1">Access ID</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-600"><i class="fas fa-user text-xs"></i></span>
+          <input type="text" id="username" class="w-full bg-black border border-border rounded-lg py-2.5 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 placeholder-zinc-700 transition-all" placeholder="Enter ID" required>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-zinc-400 mb-1.5 ml-1">Secure Passkey</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-600"><i class="fas fa-lock text-xs"></i></span>
+          <input type="password" id="password" class="w-full bg-black border border-border rounded-lg py-2.5 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 placeholder-zinc-700 transition-all" placeholder="••••••••" required>
+        </div>
+      </div>
+
+      <button type="submit" id="loginBtn" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-brand-900/20 mt-2 text-sm flex items-center justify-center">
+        Authenticate Access
+      </button>
+    </form>
+
+    <div class="mt-8 pt-6 border-t border-zinc-900 text-center">
+      <p class="text-[10px] text-zinc-600">Restricted System. Authorized Personnel Only.</p>
+    </div>
+  </div>
+
+  <div class="fixed bottom-4 text-[10px] text-zinc-700 z-20 text-center">
+    <span class="font-bold text-zinc-500">Demo Credentials:</span><br>
+    User: <span class="font-mono text-zinc-400">doctor</span> / <span class="font-mono text-zinc-400">pass</span><br>
+    Expert: <span class="font-mono text-zinc-400">admin</span> / <span class="font-mono text-zinc-400">admin</span>
+  </div>
+
+  <script>
+    $('#loginForm').on('submit', function(e) {
+      e.preventDefault();
+      const user = $('#username').val().trim().toLowerCase();
+      const pass = $('#password').val().trim();
+      const btn = $('#loginBtn');
+      const err = $('#errorMsg');
+
+      btn.html('<i class="fas fa-circle-notch fa-spin mr-2"></i> Verifying...').addClass('opacity-75');
+      err.addClass('hidden');
+
+      setTimeout(() => {
+        if (user === 'admin' && pass === 'admin') {
+          localStorage.setItem('medrag_role', 'expert');
+          window.location.href = '/expert'; 
+        } else if (user === 'doctor' && pass === 'pass') {
+          localStorage.setItem('medrag_role', 'user');
+          window.location.href = '/chat'; 
+        } else {
+          err.removeClass('hidden');
+          btn.html('Authenticate Access').removeClass('opacity-75');
+          $('#password').val('');
+        }
+      }, 800);
+    });
+  </script>
+</body>
+</html>

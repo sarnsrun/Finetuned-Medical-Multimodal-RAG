@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MedRAG | Expert Evaluation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: { 
+            background: '#000000', sidebar: '#000000', surface: '#09090b', bubble: '#18181b', border: '#27272a', 
+            brand: { 500: '#3b82f6', 600: '#2563eb' } 
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+    .typing-dot { width: 6px; height: 6px; background: #71717a; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; } .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    .message-enter { animation: slideIn 0.3s ease-out forwards; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .content-transition { transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  </style>
+</head>
+<body class="bg-background text-zinc-200 h-[100dvh] flex overflow-hidden text-sm antialiased">
+
+  <div id="mobileBackdrop" class="fixed inset-0 bg-black/80 z-30 hidden md:hidden backdrop-blur-sm transition-opacity" onclick="toggleSidebar()"></div>
+
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-sidebar border-r border-border flex flex-col transform -translate-x-full md:translate-x-0 sidebar-transition md:w-64">
+    <div class="h-16 flex items-center px-6 border-b border-border/50 justify-between">
+      <div class="flex items-center space-x-2">
+         <div class="w-8 h-8 rounded bg-purple-600 flex items-center justify-center text-white"><i class="fas fa-user-shield"></i></div>
+         <span class="font-bold text-lg tracking-tight text-white">Expert</span>
+      </div>
+      <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white"><i class="fas fa-times text-lg"></i></button>
+    </div>
+    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      <button onclick="startNewChat()" class="w-full flex items-center px-3 py-3 text-zinc-400 rounded-lg hover:bg-surface hover:text-white transition-colors group border border-transparent hover:border-zinc-800">
+        <i class="fas fa-plus text-purple-500 mr-3 group-hover:text-purple-400"></i> New Session
+      </button>
+
+      <button id="retrainBtn" onclick="retrainModel()" class="w-full flex items-center px-3 py-3 text-zinc-400 rounded-lg hover:bg-surface hover:text-white transition-colors group border border-transparent hover:border-zinc-800 mt-1">
+        <i class="fas fa-sync text-orange-500 mr-3 group-hover:text-orange-400"></i> Retrain Model
+      </button>
+
+      <div class="pt-6 pb-2 px-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">Evaluation History</div>
+      <div id="historyList" class="space-y-1 overflow-y-auto max-h-[60vh]"></div>
+    </nav>
+    <div class="p-4 text-xs text-zinc-600 text-center border-t border-zinc-900">Expert Mode v2.6</div>
+  </aside>
+
+  <main id="mainContent" class="flex-1 flex flex-col h-full relative w-full md:ml-64 content-transition">
+    <header class="md:hidden h-14 border-b border-border flex items-center px-4 bg-sidebar/80 backdrop-blur justify-between sticky top-0 z-20">
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleSidebar()" class="text-zinc-300 hover:text-white p-1"><i class="fas fa-bars text-lg"></i></button>
+        <span class="font-bold text-white">MedRAG Expert</span>
+      </div>
+      <button onclick="logout()" class="text-zinc-400 hover:text-white"><i class="fas fa-sign-out-alt"></i></button>
+    </header>
+
+    <div class="hidden md:flex absolute top-6 right-8 z-20 items-center gap-4">
+        <div class="text-right pointer-events-none">
+            <div class="text-sm font-medium text-white">Dr. Admin</div>
+            <div class="text-[10px] text-purple-500 uppercase tracking-wider font-bold">Feedback Mode</div>
+        </div>
+        <button onclick="logout()" title="Logout" class="w-10 h-10 rounded-full bg-bubble border border-purple-900/50 flex items-center justify-center text-white shadow-lg hover:border-purple-500 transition-all">
+            <i class="fas fa-sign-out-alt text-lg"></i>
+        </button>
+    </div>
+
+    <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth pt-6 md:pt-20">
+      <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center space-y-6 max-w-2xl mx-auto py-10">
+        <div class="w-16 h-16 rounded-2xl bg-surface border border-purple-500/30 flex items-center justify-center shadow-2xl shadow-purple-900/20">
+          <i class="fas fa-flask text-3xl text-purple-500"></i>
+        </div>
+        <div class="px-4"><h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Model Evaluation</h1><p class="text-zinc-400 max-w-sm mx-auto">Input queries to view RAG metrics and provide RLHF feedback.</p></div>
+      </div>
+    </div>
+
+    <div class="bg-background border-t border-border/50 p-3 md:p-6 pb-6 md:pb-8 shrink-0 z-10">
+      <div class="max-w-3xl mx-auto">
+        <div id="modeIndicator" class="flex items-center justify-between mb-2 px-1">
+          <span id="currentModeText" class="text-[10px] md:text-xs font-medium text-brand-500 uppercase tracking-widest flex items-center"><span class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span> Text Query</span>
+          <button onclick="toggleImageMode()" class="text-[10px] md:text-xs text-zinc-500 hover:text-white flex items-center transition-colors py-1 px-2 rounded hover:bg-zinc-800"><i class="fas fa-sync-alt mr-1"></i> Switch</button>
+        </div>
+        <div class="relative bg-surface rounded-xl border border-border shadow-2xl shadow-black ring-1 ring-white/5 focus-within:ring-brand-500/50 focus-within:border-brand-500/50 transition-all">
+          <form id="queryForm" class="flex items-end p-2" autocomplete="off">
+            <textarea id="queryInput" rows="1" class="w-full bg-transparent text-zinc-100 placeholder-zinc-500 px-3 py-3 focus:outline-none resize-none max-h-32 text-base md:text-sm" placeholder="Test query..." required oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
+            <button type="submit" class="p-3 rounded-lg bg-brand-600 text-white hover:bg-brand-500 transition-colors flex-shrink-0 mb-0.5"><i class="fas fa-paper-plane"></i></button>
+          </form>
+          <form id="captionForm" class="hidden flex flex-col p-3 md:p-4 space-y-3" enctype="multipart/form-data">
+            <div class="relative border-2 border-dashed border-zinc-700 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer p-4 md:p-6 text-center group">
+              <input type="file" id="imageInput" name="image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required onchange="updateFileName(this)">
+              <i class="fas fa-cloud-upload-alt text-2xl text-zinc-500 mb-2 group-hover:text-brand-400"></i>
+              <p id="fileLabel" class="text-xs md:text-sm text-zinc-400">Upload validation scan</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="imageQuestion" class="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-brand-500 text-base md:text-sm" placeholder="Validation question..." required>
+              <button type="submit" class="px-4 py-3 bg-brand-600 text-white rounded-lg hover:bg-brand-500 font-medium">Analyze</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let isImageMode=false, sidebarOpen=false, chatHistory=JSON.parse(localStorage.getItem('expert_history'))||[], currentSessionId=null;
+    const sidebar=$('#sidebar'), backdrop=$('#mobileBackdrop'), mainContent=$('#mainContent');
+
+    $(document).ready(function(){ renderHistorySidebar(); checkLayout(); });
+    $(window).resize(checkLayout);
+    function checkLayout() { if(window.innerWidth<768) { sidebar.addClass('-translate-x-full'); sidebarOpen=false; } else { sidebar.removeClass('-translate-x-full'); mainContent.addClass('md:ml-64'); sidebarOpen=true; } }
+
+    window.toggleSidebar=function(){ sidebarOpen=!sidebarOpen; if(window.innerWidth<768){ sidebar.toggleClass('-translate-x-full translate-x-0'); backdrop.toggleClass('hidden'); $('body').toggleClass('overflow-hidden'); } else { sidebar.toggleClass('-translate-x-full'); mainContent.toggleClass('md:ml-64 md:ml-0'); } }
+    
+    // Redirect to root on logout
+    window.logout=function(){ if(confirm("Log out of Expert Mode?")) window.location.href='/'; }
+    
+    window.startNewChat=function(){ currentSessionId=null; $('#chatContainer').empty(); $('#chatContainer').html($('#welcomeScreen').prop('outerHTML')); renderHistorySidebar(); closeMobileSidebar(); }
+    
+    // Retrain Model Logic
+    window.retrainModel = function() {
+        if(!confirm("Are you sure you want to retrain the model based on the collected feedback? This process may take several minutes.")) return;
+        const btn = $('#retrainBtn');
+        const originalContent = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin text-orange-500 mr-3"></i> Retraining...');
+        $.ajax({
+            url: '/retrain',
+            type: 'POST',
+            success: function(response) { alert(response.message || "Model retrained and reloaded successfully."); },
+            error: function(xhr) { alert("Error: " + (xhr.responseJSON?.error || "Retraining failed.")); },
+            complete: function() { btn.prop('disabled', false).html(originalContent); }
+        });
+    }
+    
+    window.loadSession=function(id){
+      const s=chatHistory.find(x=>x.id===id); if(!s)return; currentSessionId=id; $('#welcomeScreen').remove(); $('#chatContainer').empty();
+      let lastUserMsg = "";
+      s.messages.forEach(m => {
+          if(m.role === 'user') lastUserMsg = m.content;
+          $('#chatContainer').append(createMessage(m.role, m.content, m.metadata, lastUserMsg));
+      });
+      scrollToBottom(); renderHistorySidebar(); closeMobileSidebar();
+    }
+
+    window.deleteSession=function(e,id){ e.stopPropagation(); if(confirm("Delete this log?")){ chatHistory=chatHistory.filter(x=>x.id!==id); localStorage.setItem('expert_history',JSON.stringify(chatHistory)); if(currentSessionId===id)startNewChat(); else renderHistorySidebar(); } }
+    function closeMobileSidebar(){ if(window.innerWidth<768){ sidebar.addClass('-translate-x-full'); backdrop.addClass('hidden'); $('body').removeClass('overflow-hidden'); sidebarOpen=false; } }
+
+    function renderHistorySidebar(){
+      const l=$('#historyList'); l.empty(); chatHistory.sort((a,b)=>b.timestamp-a.timestamp);
+      if(chatHistory.length===0)l.append('<div class="px-3 py-4 text-xs text-zinc-600 text-center italic">No logs available</div>');
+      chatHistory.forEach(s=>{
+         const active=currentSessionId===s.id?'bg-zinc-900 text-purple-400 border border-zinc-800':'text-zinc-500 hover:bg-zinc-900';
+         l.append(`<div onclick="loadSession(${s.id})" class="flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer group mb-1 ${active}"><div class="flex items-center truncate max-w-[85%]"><i class="fas fa-file-alt mr-3 text-xs opacity-50"></i><span class="truncate text-xs font-medium">${s.title||"Untitled"}</span></div><button onclick="deleteSession(event,${s.id})" class="p-2 text-zinc-600 hover:text-red-500"><i class="fas fa-trash text-[10px]"></i></button></div>`);
+      });
+    }
+
+    function createMessage(role, content, metadata=null, relatedQuestion="") {
+      const isUser=role==='user', bg=isUser?'bg-zinc-800 border border-zinc-700 text-zinc-100':'bg-transparent text-zinc-300 pr-2 md:pr-16';
+      let metricsHtml='';
+      if(metadata && !isUser){
+        // FIXED: Replaced Math.random (which has dots) with a safe string for IDs
+        const id = 'msg-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        const safeQuestion = relatedQuestion.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        metricsHtml=`
+          <div class="mt-4 pt-4 border-t border-zinc-800">
+            <details class="group" open>
+              <summary class="flex items-center text-xs font-bold text-purple-500 cursor-pointer list-none select-none uppercase tracking-wider mb-3">
+                <i class="fas fa-chevron-right text-[10px] mr-2 transition-transform group-open:rotate-90"></i> Metrics & Feedback
+              </summary>
+              <div class="pl-0 md:pl-4 border-l-0 md:border-l-2 border-zinc-800 space-y-4">
+                <div id="q-${id}" class="hidden">${safeQuestion}</div>
+                <div class="grid grid-cols-5 gap-2">
+                   <div class="bg-black p-1.5 rounded border border-zinc-800 text-center"><div class="text-[9px] text-zinc-600">LEV</div><div class="text-brand-500 font-mono font-bold text-xs">${metadata.lev_similarity?.toFixed(2)||'0.00'}</div></div>
+                   <div class="bg-black p-1.5 rounded border border-zinc-800 text-center"><div class="text-[9px] text-zinc-600">COS</div><div class="text-brand-500 font-mono font-bold text-xs">${metadata.cosine_similarity?.toFixed(2)||'0.00'}</div></div>
+                   <div class="bg-black p-1.5 rounded border border-zinc-800 text-center"><div class="text-[9px] text-zinc-600">PRE</div><div class="text-brand-500 font-mono font-bold text-xs">${metadata.precision?.toFixed(2)||'0.00'}</div></div>
+                   <div class="bg-black p-1.5 rounded border border-zinc-800 text-center"><div class="text-[9px] text-zinc-600">REC</div><div class="text-brand-500 font-mono font-bold text-xs">${metadata.recall?.toFixed(2)||'0.00'}</div></div>
+                   <div class="bg-black p-1.5 rounded border border-zinc-800 text-center"><div class="text-[9px] text-zinc-600">F1</div><div class="text-brand-500 font-mono font-bold text-xs">${metadata.f1_score?.toFixed(2)||'0.00'}</div></div>
+                </div>
+                <div><div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Reference Truth</div><div class="text-xs text-zinc-400 italic bg-black/30 p-2 rounded border border-zinc-800 font-mono max-h-32 overflow-y-auto">"${metadata.reference_answer||'N/A'}"</div></div>
+                <div class="pt-2">
+                    <label class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold">Correction (RLHF)</label>
+                    <textarea id="feedback-${id}" class="w-full bg-black/50 border border-zinc-800 rounded p-2 text-xs text-zinc-300 focus:border-purple-500/50 focus:outline-none mb-2" rows="2">${content.replace(/"/g,'&quot;')}</textarea>
+                    <button id="btn-${id}" onclick="submitFeedback('${id}')" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-white text-xs rounded border border-zinc-700">Save Correction</button>
+                </div>
+              </div>
+            </details>
+          </div>`;
+      }
+      return `<div class="flex ${isUser?'justify-end':'justify-start'} message-enter pb-4">${!isUser?`<div class="w-6 h-6 rounded bg-purple-600 flex-shrink-0 flex items-center justify-center mr-3 mt-1"><i class="fas fa-robot text-white text-[10px]"></i></div>`:''}<div class="${isUser?'max-w-[85%] rounded-2xl':'w-full'} ${bg}"><div class="leading-relaxed whitespace-pre-wrap text-sm p-2">${content}</div>${metricsHtml}</div></div>`;
+    }
+
+    window.submitFeedback = function(id) {
+        const btn = $(`#btn-${id}`);
+        const feedbackVal = $(`#feedback-${id}`).val();
+        const originalQuestion = $(`#q-${id}`).text(); 
+        
+        if(!feedbackVal) return;
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        const taskType = isImageMode ? 'caption' : 'qa';
+        $.ajax({
+            url: '/feedback',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ task_type: taskType, user_input: originalQuestion, corrected_output: feedbackVal }),
+            success: function() { btn.html('<i class="fas fa-check"></i> Saved').addClass('bg-green-600 border-green-600'); },
+            error: function() { btn.html('Error').addClass('bg-red-600'); }
+        });
+    }
+
+    function handleResponse(res, type, originalQuery){
+       $('#typingIndicator').remove(); const ans=res.generated_answer||res.generated_caption;
+       $('#chatContainer').append(createMessage('ai', ans, res, originalQuery)); 
+       if(!currentSessionId){currentSessionId=Date.now(); chatHistory.push({id:currentSessionId, timestamp:Date.now(), title:type==='img'?'Image Eval':'Text Eval', messages:[]});}
+       const sess=chatHistory.find(s=>s.id===currentSessionId);
+       sess.messages.push({role:'ai', content:ans, metadata:res});
+       if(sess.messages.length===2 && type!=='img') sess.title=sess.messages[0].content.substring(0,25)+'...';
+       localStorage.setItem('expert_history',JSON.stringify(chatHistory)); renderHistorySidebar(); scrollToBottom();
+    }
+
+    $('#queryForm').on('submit',function(e){ e.preventDefault(); const q=$('#queryInput').val(); if(!q)return; 
+       setupUserMsg(q); $.ajax({url:'/query', type:'POST', contentType:'application/json', data:JSON.stringify({query:q}), success:r=>handleResponse(r,'txt', q)}); });
+    
+    $('#captionForm').on('submit',function(e){ e.preventDefault(); const q=$('#imageQuestion').val(), f=$('#imageInput')[0].files[0]; if(!f||!q)return;
+       const fullQuery = `[Image] ${q}`;
+       setupUserMsg(fullQuery); const fd=new FormData(); fd.append('image',f); fd.append('question',q);
+       $.ajax({url:'/caption', type:'POST', data:fd, processData:false, contentType:false, success:r=>handleResponse(r,'img', fullQuery)}); });
+
+    function setupUserMsg(txt){
+       $('#welcomeScreen').remove(); $('#chatContainer').append(createMessage('user',txt)); 
+       if(!currentSessionId){currentSessionId=Date.now(); chatHistory.push({id:currentSessionId, timestamp:Date.now(), title:'New Eval', messages:[]});}
+       chatHistory.find(s=>s.id===currentSessionId).messages.push({role:'user',content:txt});
+       $('#queryInput').val('').css('height','auto'); $('#chatContainer').append(`<div id="typingIndicator" class="flex pb-4"><div class="w-6 h-6 rounded bg-purple-600 flex-shrink-0 flex items-center justify-center mr-3"><i class="fas fa-robot text-white text-[10px]"></i></div><div class="flex items-center space-x-1 h-6"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`);
+       scrollToBottom();
+    }
+    function scrollToBottom(){const c=document.getElementById('chatContainer'); c.scrollTop=c.scrollHeight;}
+    window.setQuickQuery=function(t){$('#queryInput').val(t).focus();}
+    window.toggleImageMode=function(){isImageMode=!isImageMode; $('#queryForm').toggleClass('hidden'); $('#captionForm').toggleClass('hidden'); $('#currentModeText').html(isImageMode?'Image Mode':'Text Query');}
+    window.updateFileName=function(i){if(i.files[0])$('#fileLabel').text(i.files[0].name).addClass('text-purple-400');}
+  </script>
+</body>
+</html>

@@ -2,15 +2,11 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MedRAG | Clinical Intelligence</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MedRAG | Assistant</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-  
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <script>
@@ -18,423 +14,187 @@
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            background: '#09090b', // Very dark zinc
-            sidebar: '#000000',    // Pure black sidebar
-            surface: '#18181b',    // Component background
-            border: '#27272a',     // Subtle borders
-            brand: {
-              500: '#3b82f6',      // Medical Blue
-              600: '#2563eb',
-            }
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: { 
+            background: '#000000', sidebar: '#000000', surface: '#09090b', bubble: '#18181b', border: '#27272a', 
+            brand: { 500: '#3b82f6', 600: '#2563eb' } 
           }
         }
       }
     }
   </script>
-
   <style>
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
-
-    /* Typing Indicator */
-    .typing-dot {
-      width: 6px; height: 6px; background: #71717a; border-radius: 50%;
-      animation: bounce 1.4s infinite ease-in-out both;
-    }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+    .typing-dot { width: 6px; height: 6px; background: #71717a; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; } .typing-dot:nth-child(2) { animation-delay: -0.16s; }
     @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-    
-    /* Fade In */
     .message-enter { animation: slideIn 0.3s ease-out forwards; }
     @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .content-transition { transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   </style>
 </head>
-<body class="bg-background text-zinc-200 h-screen flex overflow-hidden text-sm antialiased selection:bg-brand-900 selection:text-brand-100">
+<body class="bg-background text-zinc-200 h-[100dvh] flex overflow-hidden text-sm antialiased">
 
-  <aside class="w-64 bg-sidebar border-r border-border flex-col hidden md:flex">
-    <div class="h-16 flex items-center px-6 border-b border-border/50">
-      <div class="w-7 h-7 rounded bg-gradient-to-tr from-brand-500 to-blue-700 flex items-center justify-center mr-3 shadow-lg shadow-blue-900/20">
-        <i class="fas fa-cube text-white text-xs"></i>
+  <div id="mobileBackdrop" class="fixed inset-0 bg-black/80 z-30 hidden md:hidden backdrop-blur-sm transition-opacity" onclick="toggleSidebar()"></div>
+
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-sidebar border-r border-border flex flex-col transform -translate-x-full md:translate-x-0 sidebar-transition md:w-64">
+    <div class="h-16 flex items-center px-6 border-b border-border/50 justify-between">
+      <div class="flex items-center space-x-2">
+         <div class="w-8 h-8 rounded bg-brand-600 flex items-center justify-center text-white"><i class="fas fa-heartbeat"></i></div>
+         <span class="font-bold text-lg tracking-tight text-white">MedRAG</span>
       </div>
-      <span class="font-semibold text-lg tracking-tight text-white">MedRAG</span>
+      <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white"><i class="fas fa-times text-lg"></i></button>
     </div>
-
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-      <button onclick="location.reload()" class="w-full flex items-center px-3 py-2.5 text-zinc-400 rounded-lg hover:bg-surface hover:text-white transition-colors group">
-        <i class="fas fa-plus text-brand-500 mr-3 group-hover:text-brand-400"></i>
-        New Chat
+      <button onclick="startNewChat()" class="w-full flex items-center px-3 py-3 text-zinc-400 rounded-lg hover:bg-surface hover:text-white transition-colors group border border-transparent hover:border-zinc-800">
+        <i class="fas fa-plus text-brand-500 mr-3 group-hover:text-brand-400"></i> New Chat
       </button>
-
-      <div class="pt-4 pb-2 px-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">History</div>
-      <div class="space-y-1">
-        <a href="#" class="flex items-center px-3 py-2 text-zinc-500 rounded-lg hover:bg-surface/50 hover:text-zinc-300 transition-colors truncate">
-          <i class="far fa-message mr-3 text-xs opacity-50"></i> Glioblastoma treatment
-        </a>
-        <a href="#" class="flex items-center px-3 py-2 text-zinc-500 rounded-lg hover:bg-surface/50 hover:text-zinc-300 transition-colors truncate">
-          <i class="far fa-image mr-3 text-xs opacity-50"></i> X-Ray Pleural Effusion
-        </a>
-      </div>
+      <div class="pt-6 pb-2 px-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">History</div>
+      <div id="historyList" class="space-y-1 overflow-y-auto max-h-[60vh]"></div>
     </nav>
-
-    <div class="p-4 border-t border-border bg-black">
-      <div class="flex items-center">
-        <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-700">
-          <i class="fas fa-user-md text-xs"></i>
-        </div>
-        <div class="ml-3">
-          <p class="text-sm font-medium text-white">Clinical User</p>
-          <p class="text-xs text-zinc-500">Research Access</p>
-        </div>
-      </div>
-    </div>
   </aside>
 
-  <main class="flex-1 flex flex-col h-full relative bg-background">
+  <main id="mainContent" class="flex-1 flex flex-col h-full relative w-full md:ml-64 content-transition">
     
-    <div class="md:hidden h-14 border-b border-border flex items-center px-4 bg-sidebar justify-between">
-      <span class="font-bold text-white">MedRAG</span>
-      <button class="text-zinc-400"><i class="fas fa-bars"></i></button>
+    <header class="md:hidden h-14 border-b border-border flex items-center px-4 bg-sidebar/80 backdrop-blur justify-between sticky top-0 z-20">
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleSidebar()" class="text-zinc-300 hover:text-white p-1"><i class="fas fa-bars text-lg"></i></button>
+        <span class="font-bold text-white">MedRAG</span>
+      </div>
+      <button onclick="logout()" class="text-zinc-400 hover:text-white"><i class="fas fa-sign-out-alt"></i></button>
+    </header>
+
+    <div class="hidden md:flex absolute top-6 right-8 z-20 items-center gap-4">
+        <div class="text-right pointer-events-none">
+            <div class="text-sm font-medium text-white">Clinical User</div>
+        </div>
+        <button onclick="logout()" title="Logout" class="w-10 h-10 rounded-full bg-bubble border border-zinc-700 flex items-center justify-center text-zinc-400 shadow-lg hover:text-white hover:border-brand-500 transition-all">
+            <i class="fas fa-sign-out-alt text-lg"></i>
+        </button>
     </div>
 
-    <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-32 scroll-smooth">
-      
-      <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center space-y-6 max-w-2xl mx-auto">
-        <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center shadow-2xl shadow-black">
+    <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth pt-6 md:pt-20">
+      <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center space-y-6 max-w-2xl mx-auto py-10">
+        <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center shadow-2xl shadow-black ring-1 ring-white/5">
           <i class="fas fa-heartbeat text-3xl text-brand-500"></i>
         </div>
-        <div>
-          <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Good evening, Doctor.</h1>
-          <p class="text-zinc-400">I am your AI assistant for retrieval-augmented medical analysis.</p>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg mt-8">
-          <button onclick="setQuickQuery('What are the treatments for glioblastoma?')" class="text-left p-4 rounded-xl bg-surface border border-border hover:border-brand-500/50 hover:bg-surface/80 transition-all group">
-            <div class="text-zinc-200 font-medium mb-1 group-hover:text-brand-400">Clinical Protocols</div>
-            <div class="text-xs text-zinc-500">"Treatments for glioblastoma..."</div>
-          </button>
-          <button onclick="toggleImageMode()" class="text-left p-4 rounded-xl bg-surface border border-border hover:border-brand-500/50 hover:bg-surface/80 transition-all group">
-            <div class="text-zinc-200 font-medium mb-1 group-hover:text-brand-400">Visual Analysis</div>
-            <div class="text-xs text-zinc-500">Upload scan for VQA diagnosis...</div>
-          </button>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pb-6 pt-10 px-4 md:px-8">
-      <div class="max-w-3xl mx-auto">
-        
-        <div id="modeIndicator" class="flex items-center justify-between mb-2 px-2">
-          <span id="currentModeText" class="text-xs font-medium text-brand-500 uppercase tracking-widest flex items-center">
-            <span class="w-2 h-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span> Text Query Mode
-          </span>
-          <button onclick="toggleImageMode()" class="text-xs text-zinc-500 hover:text-white flex items-center transition-colors">
-            <i class="fas fa-sync-alt mr-1"></i> Switch Mode
-          </button>
-        </div>
-
-        <div class="relative bg-surface rounded-xl border border-border shadow-2xl shadow-black ring-1 ring-white/5 focus-within:ring-brand-500/50 focus-within:border-brand-500/50 transition-all">
-          
-          <form id="queryForm" class="flex items-end p-2" autocomplete="off">
-            <textarea id="queryInput" rows="1" 
-              class="w-full bg-transparent text-zinc-100 placeholder-zinc-500 px-4 py-3 focus:outline-none resize-none max-h-32" 
-              placeholder="Ask a medical question..." required oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-            <button type="submit" class="p-3 rounded-lg bg-brand-600 text-white hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 mb-0.5">
-              <i class="fas fa-paper-plane"></i>
+        <div class="px-4"><h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Good evening, Doctor.</h1><p class="text-zinc-400 max-w-sm mx-auto">AI assistant for retrieval-augmented analysis.</p></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg mt-4 px-2">
+            <button onclick="setQuickQuery('What are the treatments for glioblastoma?')" class="text-left p-4 rounded-xl bg-surface border border-border hover:border-brand-500/50 hover:bg-zinc-900 transition-all group active:scale-95">
+                <div class="text-zinc-200 font-medium mb-1 group-hover:text-brand-400"><i class="fas fa-book-medical mr-2 text-zinc-500"></i> Protocols</div>
+                <div class="text-xs text-zinc-500 truncate">"Treatments for glioblastoma..."</div>
             </button>
-          </form>
-
-          <form id="captionForm" class="hidden flex flex-col p-4 space-y-3" enctype="multipart/form-data">
-            <div class="relative border-2 border-dashed border-zinc-700 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer p-6 text-center">
-              <input type="file" id="imageInput" name="image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required onchange="updateFileName(this)">
-              <i class="fas fa-cloud-upload-alt text-2xl text-zinc-500 mb-2"></i>
-              <p id="fileLabel" class="text-sm text-zinc-400">Drop medical image here or click to browse</p>
-            </div>
-            <div class="flex items-center space-x-2">
-              <input type="text" id="imageQuestion" class="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-500" placeholder="Clinical question about image..." required>
-              <button type="submit" class="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-500 font-medium">Analyze</button>
-            </div>
-          </form>
-
+            <button onclick="toggleImageMode()" class="text-left p-4 rounded-xl bg-surface border border-border hover:border-brand-500/50 hover:bg-zinc-900 transition-all group active:scale-95">
+                <div class="text-zinc-200 font-medium mb-1 group-hover:text-brand-400"><i class="fas fa-microscope mr-2 text-zinc-500"></i> Visual Analysis</div>
+                <div class="text-xs text-zinc-500 truncate">Upload scan for VQA diagnosis...</div>
+            </button>
         </div>
-        <p class="text-center text-[10px] text-zinc-600 mt-3">
-          MedRAG may produce inaccurate information about patients or protocols. Verify with a specialist.
-        </p>
       </div>
     </div>
 
+    <div class="bg-background border-t border-border/50 p-3 md:p-6 pb-6 md:pb-8 shrink-0 z-10">
+      <div class="max-w-3xl mx-auto">
+        <div id="modeIndicator" class="flex items-center justify-between mb-2 px-1">
+          <span id="currentModeText" class="text-[10px] md:text-xs font-medium text-brand-500 uppercase tracking-widest flex items-center"><span class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span> Text Query</span>
+          <button onclick="toggleImageMode()" class="text-[10px] md:text-xs text-zinc-500 hover:text-white flex items-center transition-colors py-1 px-2 rounded hover:bg-zinc-800"><i class="fas fa-sync-alt mr-1"></i> Switch</button>
+        </div>
+        <div class="relative bg-surface rounded-xl border border-border shadow-2xl shadow-black ring-1 ring-white/5 focus-within:ring-brand-500/50 focus-within:border-brand-500/50 transition-all">
+          <form id="queryForm" class="flex items-end p-2" autocomplete="off">
+            <textarea id="queryInput" rows="1" class="w-full bg-transparent text-zinc-100 placeholder-zinc-500 px-3 py-3 focus:outline-none resize-none max-h-32 text-base md:text-sm" placeholder="Ask a medical question..." required oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
+            <button type="submit" class="p-3 rounded-lg bg-brand-600 text-white hover:bg-brand-500 disabled:opacity-50 transition-colors flex-shrink-0 mb-0.5"><i class="fas fa-paper-plane"></i></button>
+          </form>
+          <form id="captionForm" class="hidden flex flex-col p-3 md:p-4 space-y-3" enctype="multipart/form-data">
+            <div class="relative border-2 border-dashed border-zinc-700 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer p-4 md:p-6 text-center group">
+              <input type="file" id="imageInput" name="image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required onchange="updateFileName(this)">
+              <i class="fas fa-cloud-upload-alt text-2xl text-zinc-500 mb-2 group-hover:text-brand-400"></i>
+              <p id="fileLabel" class="text-xs md:text-sm text-zinc-400">Tap to upload scan</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="imageQuestion" class="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-brand-500 text-base md:text-sm" placeholder="Clinical question..." required>
+              <button type="submit" class="px-4 py-3 bg-brand-600 text-white rounded-lg hover:bg-brand-500 font-medium whitespace-nowrap">Analyze</button>
+            </div>
+          </form>
+        </div>
+        <p class="text-center text-[10px] text-zinc-600 mt-2">MedRAG generates research-only outputs. Verify clinically.</p>
+      </div>
+    </div>
   </main>
 
   <script>
-    let isImageMode = false;
-    let currentTaskType = ''; // 'qa' or 'caption'
-    let currentQuestion = ''; // to store the question for feedback
+    let isImageMode=false, sidebarOpen=false, chatHistory=JSON.parse(localStorage.getItem('user_history'))||[], currentSessionId=null;
+    const sidebar=$('#sidebar'), backdrop=$('#mobileBackdrop'), mainContent=$('#mainContent');
 
-    // --- UI HELPERS ---
-    function setQuickQuery(text) {
-      $('#queryInput').val(text).focus();
+    $(document).ready(function(){ renderHistorySidebar(); checkLayout(); });
+    $(window).resize(checkLayout);
+    function checkLayout(){ if(window.innerWidth<768){sidebar.addClass('-translate-x-full'); sidebarOpen=false;} else {sidebar.removeClass('-translate-x-full'); mainContent.addClass('md:ml-64'); sidebarOpen=true;} }
+    
+    window.toggleSidebar=function(){ sidebarOpen=!sidebarOpen; if(window.innerWidth<768){ sidebar.toggleClass('-translate-x-full translate-x-0'); backdrop.toggleClass('hidden'); $('body').toggleClass('overflow-hidden'); } else { sidebar.toggleClass('-translate-x-full'); mainContent.toggleClass('md:ml-64 md:ml-0'); } }
+    
+    // Redirect to root on logout
+    window.logout=function(){ if(confirm("Log out of MedRAG?")) window.location.href='/'; }
+    
+    window.startNewChat=function(){ currentSessionId=null; $('#chatContainer').empty(); $('#chatContainer').html($('#welcomeScreen').prop('outerHTML')); renderHistorySidebar(); closeMobileSidebar(); }
+    
+    window.loadSession=function(id){
+      const s=chatHistory.find(x=>x.id===id); if(!s)return; currentSessionId=id; $('#welcomeScreen').remove(); $('#chatContainer').empty();
+      s.messages.forEach(m=>$('#chatContainer').append(createMessage(m.role,m.content,m.metadata)));
+      scrollToBottom(); renderHistorySidebar(); closeMobileSidebar();
     }
+    
+    window.deleteSession=function(e,id){ e.stopPropagation(); if(confirm("Delete this chat?")){ chatHistory=chatHistory.filter(x=>x.id!==id); localStorage.setItem('user_history',JSON.stringify(chatHistory)); if(currentSessionId===id)startNewChat(); else renderHistorySidebar(); } }
+    function closeMobileSidebar(){ if(window.innerWidth<768){ sidebar.addClass('-translate-x-full'); backdrop.addClass('hidden'); $('body').removeClass('overflow-hidden'); sidebarOpen=false; } }
 
-    function toggleImageMode() {
-      isImageMode = !isImageMode;
-      const indicator = $('#currentModeText');
-      
-      if (isImageMode) {
-        indicator.html('<span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span> VQA Image Mode');
-        $('#queryForm').addClass('hidden');
-        $('#captionForm').removeClass('hidden');
-      } else {
-        indicator.html('<span class="w-2 h-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span> Text Query Mode');
-        $('#captionForm').addClass('hidden');
-        $('#queryForm').removeClass('hidden');
-      }
-    }
-
-    function updateFileName(input) {
-      if(input.files && input.files[0]) {
-        $('#fileLabel').text(input.files[0].name).addClass('text-brand-400 font-medium');
-      }
-    }
-
-    function scrollToBottom() {
-      const container = document.getElementById('chatContainer');
-      container.scrollTop = container.scrollHeight;
-    }
-
-    // --- FEEDBACK FUNCTION ---
-    function submitFeedback(id) {
-        const feedbackInput = $(`#feedback-${id}`);
-        const feedbackBtn = $(`#btn-${id}`);
-        const corrected = feedbackInput.val();
-        
-        if(!corrected) return;
-
-        feedbackBtn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
-
-        // We use the global currentTaskType/Question, assuming feedback is for the latest query.
-        // For a more robust solution in a real app, pass these as data-attributes to the button.
-        const payload = {
-            task_type: currentTaskType,
-            user_input: currentQuestion, 
-            corrected_output: corrected
-        };
-
-        $.ajax({
-            url: '/feedback',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            success: function() {
-                feedbackBtn.html('<i class="fas fa-check"></i> Saved').removeClass('bg-zinc-700 hover:bg-zinc-600').addClass('bg-green-600 text-white');
-                setTimeout(() => {
-                   // Optional: close details
-                }, 1500);
-            },
-            error: function() {
-                alert("Failed to save feedback");
-                feedbackBtn.html('Submit').prop('disabled', false);
-            }
-        });
-    }
-
-    function createMessage(role, content, metadata = null) {
-      const isUser = role === 'user';
-      const alignment = isUser ? 'justify-end' : 'justify-start';
-      const bg = isUser ? 'bg-zinc-800 border border-zinc-700 text-zinc-100' : 'bg-transparent text-zinc-300 pr-8 md:pr-16';
-      const avatar = isUser 
-        ? '' 
-        : `<div class="w-8 h-8 rounded bg-brand-600 flex-shrink-0 flex items-center justify-center mr-4 mt-1 shadow-lg shadow-blue-900/20"><i class="fas fa-cube text-white text-xs"></i></div>`;
-
-      // Limit height for generated answer (Scrollable)
-      // "max-h-96 overflow-y-auto" ensures we don't spam the screen with tokens
-      const contentHtml = isUser 
-        ? `<div class="leading-relaxed whitespace-pre-wrap">${content}</div>`
-        : `<div class="leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto pr-2 custom-scrollbar">${content}</div>`;
-
-      let metricsHtml = '';
-      if (metadata && !isUser) {
-        const id = Date.now(); // Unique ID for feedback form
-        
-        metricsHtml = `
-          <div class="mt-4 pt-4 border-t border-zinc-800">
-            <details class="group">
-              <summary class="flex items-center text-xs font-medium text-zinc-500 cursor-pointer hover:text-brand-400 transition-colors list-none select-none">
-                <i class="fas fa-chevron-right text-[10px] mr-2 transition-transform group-open:rotate-90"></i>
-                View Metrics, Reference & Feedback
-              </summary>
-              
-              <div class="mt-3 pl-4 border-l-2 border-zinc-800 space-y-4">
-                
-                <div class="grid grid-cols-3 md:grid-cols-5 gap-2">
-                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">Levenshtein</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.lev_similarity?.toFixed(2) || '0.00'}</div>
-                   </div>
-                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">Cosine</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.cosine_similarity?.toFixed(2) || '0.00'}</div>
-                   </div>
-                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">Precision</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.precision?.toFixed(2) || '0.00'}</div>
-                   </div>
-                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">Recall</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.recall?.toFixed(2) || '0.00'}</div>
-                   </div>
-                   <div class="bg-black p-2 rounded border border-zinc-800 text-center">
-                      <div class="text-[10px] text-zinc-600 uppercase">F1 Score</div>
-                      <div class="text-brand-500 font-mono font-bold">${metadata.f1_score?.toFixed(2) || '0.00'}</div>
-                   </div>
-                </div>
-
-                <div>
-                  <div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Reference Answer</div>
-                  <div class="text-sm text-zinc-400 italic bg-black/30 p-3 rounded border border-zinc-800/50 max-h-40 overflow-y-auto custom-scrollbar whitespace-pre-wrap">
-                    "${metadata.reference_answer || 'No reference available'}"
-                  </div>
-                </div>
-
-                <div class="pt-2">
-                   <div class="text-[10px] uppercase tracking-wider text-zinc-600 font-bold mb-1">Correction / Feedback</div>
-                   <textarea id="feedback-${id}" class="w-full bg-black/50 border border-zinc-800 rounded p-2 text-xs text-zinc-300 focus:border-brand-500/50 focus:outline-none mb-2" rows="2" placeholder="Edit the answer here to improve the model...">${content.replace(/"/g, '&quot;')}</textarea>
-                   <button id="btn-${id}" onclick="submitFeedback(${id})" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700 transition-colors">
-                      Submit Feedback
-                   </button>
-                </div>
-              </div>
-            </details>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="flex ${alignment} message-enter">
-          ${!isUser ? avatar : ''}
-          <div class="${isUser ? 'max-w-2xl px-5 py-3 rounded-2xl' : 'w-full'} ${bg}">
-            ${contentHtml}
-            ${metricsHtml}
-          </div>
-        </div>
-      `;
-    }
-
-    function showTyping() {
-      return `
-        <div id="typingIndicator" class="flex justify-start message-enter">
-          <div class="w-8 h-8 rounded bg-brand-600 flex-shrink-0 flex items-center justify-center mr-4 shadow-lg shadow-blue-900/20"><i class="fas fa-cube text-white text-xs"></i></div>
-          <div class="flex items-center space-x-1 h-10">
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-          </div>
-        </div>
-      `;
-    }
-
-    // --- SUBMIT HANDLERS ---
-
-    // 1. TEXT SUBMIT
-    $('#queryForm').on('submit', function(e) {
-      e.preventDefault();
-      const input = $('#queryInput');
-      const query = input.val().trim();
-      if (!query) return;
-
-      currentTaskType = 'qa';
-      currentQuestion = query;
-
-      // UI Updates
-      $('#welcomeScreen').hide();
-      $('#chatContainer').append(createMessage('user', query));
-      input.val('').css('height', 'auto');
-      $('#chatContainer').append(showTyping());
-      scrollToBottom();
-
-      // API Call
-      $.ajax({
-        url: "/query",
-        type: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ query: query }),
-        success: function(res) {
-          $('#typingIndicator').remove();
-          $('#chatContainer').append(createMessage('ai', res.generated_answer, res));
-          scrollToBottom();
-        },
-        error: function() {
-          $('#typingIndicator').remove();
-          $('#chatContainer').append(createMessage('ai', "I apologize, but I encountered an error processing your request. Please try again."));
-          scrollToBottom();
-        }
+    function renderHistorySidebar(){
+      const l=$('#historyList'); l.empty(); chatHistory.sort((a,b)=>b.timestamp-a.timestamp);
+      if(chatHistory.length===0)l.append('<div class="px-3 py-4 text-xs text-zinc-600 text-center italic">No history available</div>');
+      chatHistory.forEach(s=>{
+         const active=currentSessionId===s.id?'bg-zinc-900 text-brand-400 border border-zinc-800':'text-zinc-500 hover:bg-zinc-900';
+         l.append(`<div onclick="loadSession(${s.id})" class="flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer group mb-1 ${active}"><div class="flex items-center truncate max-w-[85%]"><i class="far fa-message mr-3 text-xs opacity-50"></i><span class="truncate text-xs font-medium">${s.title||"Untitled"}</span></div><button onclick="deleteSession(event,${s.id})" class="p-2 text-zinc-600 hover:text-red-500"><i class="fas fa-trash text-[10px]"></i></button></div>`);
       });
-    });
+    }
 
-    // 2. IMAGE SUBMIT
-    $('#captionForm').on('submit', function(e) {
-      e.preventDefault();
-      
-      const question = $('#imageQuestion').val();
-      const fileInput = $('#imageInput')[0];
-      
-      if (!fileInput.files.length || !question) return;
+    function createMessage(role,content,metadata=null){
+      const isUser=role==='user', bg=isUser?'bg-zinc-800 border border-zinc-700 text-zinc-100':'bg-transparent text-zinc-300 pr-2 md:pr-16';
+      let refHtml='';
+      // Logic for showing reference button
+      if(!isUser && metadata && metadata.reference_answer){
+          const rid='ref-'+Math.random().toString(36).substr(2,9);
+          refHtml=`<div class="mt-2 pt-2"><button onclick="$('#${rid}').toggleClass('hidden')" class="text-[10px] text-zinc-500 hover:text-brand-400 flex items-center gap-1.5 focus:outline-none"><i class="far fa-eye"></i> Show Reference Answer</button><div id="${rid}" class="hidden mt-2 p-3 bg-black/40 rounded border border-zinc-800 text-xs text-zinc-400 italic"><div class="mb-1 text-[9px] uppercase tracking-wider font-bold text-zinc-600">Ground Truth</div>${metadata.reference_answer}</div></div>`;
+      }
+      return `<div class="flex ${isUser?'justify-end':'justify-start'} message-enter pb-2">${!isUser?`<div class="w-6 h-6 rounded bg-brand-600 flex-shrink-0 flex items-center justify-center mr-3 mt-1 shadow-lg shadow-blue-900/20"><i class="fas fa-cube text-white text-[10px]"></i></div>`:''}<div class="${isUser?'max-w-[85%] rounded-2xl':'w-full'} ${bg}"><div class="leading-relaxed whitespace-pre-wrap text-sm break-words">${content}</div>${refHtml}</div></div>`;
+    }
 
-      currentTaskType = 'caption';
-      currentQuestion = question; // For simplicity in this demo, using question as ID
+    function handleResponse(res,type){
+       $('#typingIndicator').remove(); const ans=res.generated_answer||res.generated_caption;
+       // Pass 'res' to createMessage so it can extract the reference_answer
+       $('#chatContainer').append(createMessage('ai',ans,res));
+       if(!currentSessionId){currentSessionId=Date.now(); chatHistory.push({id:currentSessionId, timestamp:Date.now(), title:type==='img'?'Image Analysis':'New Chat', messages:[]});}
+       const sess=chatHistory.find(s=>s.id===currentSessionId);
+       sess.messages.push({role:'ai', content:ans, metadata:res});
+       if(sess.messages.length===2 && type!=='img') sess.title=sess.messages[0].content.substring(0,25)+'...';
+       localStorage.setItem('user_history',JSON.stringify(chatHistory)); renderHistorySidebar(); scrollToBottom();
+    }
 
-      // UI Updates
-      $('#welcomeScreen').hide();
-      $('#chatContainer').append(createMessage('user', `[Attached Image: ${fileInput.files[0].name}]\n${question}`));
-      $('#chatContainer').append(showTyping());
-      scrollToBottom();
+    $('#queryForm').on('submit',function(e){ e.preventDefault(); const q=$('#queryInput').val(); if(!q)return; 
+       setupUserMsg(q); $.ajax({url:'/query', type:'POST', contentType:'application/json', data:JSON.stringify({query:q}), success:r=>handleResponse(r,'txt')}); });
+    $('#captionForm').on('submit',function(e){ e.preventDefault(); const q=$('#imageQuestion').val(), f=$('#imageInput')[0].files[0]; if(!f||!q)return;
+       setupUserMsg(`[Image] ${q}`); const fd=new FormData(); fd.append('image',f); fd.append('question',q);
+       $.ajax({url:'/caption', type:'POST', data:fd, processData:false, contentType:false, success:r=>handleResponse(r,'img')}); });
 
-      // Prepare Data
-      const formData = new FormData();
-      formData.append('image', fileInput.files[0]);
-      formData.append('question', question);
-
-      // API Call
-      $.ajax({
-        url: "/caption",
-        type: "POST",
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(res) {
-          $('#typingIndicator').remove();
-          
-          // Handle list reference answer
-          let ref = res.reference_answer;
-          if (Array.isArray(ref)) ref = ref.join(", ");
-          res.reference_answer = ref; 
-
-          // Logic to grab the right answer key based on app.py response
-          const answerText = res.generated_caption || res.generated_answer;
-
-          $('#chatContainer').append(createMessage('ai', answerText, res));
-          scrollToBottom();
-          
-          // Reset form
-          $('#captionForm')[0].reset();
-          $('#fileLabel').text("Drop medical image here or click to browse").removeClass('text-brand-400 font-medium');
-          toggleImageMode(); 
-        },
-        error: function() {
-          $('#typingIndicator').remove();
-          $('#chatContainer').append(createMessage('ai', "Error analyzing the image. Please ensure it is a valid medical format."));
-          scrollToBottom();
-        }
-      });
-    });
+    function setupUserMsg(txt){
+       $('#welcomeScreen').remove(); $('#chatContainer').append(createMessage('user',txt)); 
+       if(!currentSessionId){currentSessionId=Date.now(); chatHistory.push({id:currentSessionId, timestamp:Date.now(), title:'New Chat', messages:[]});}
+       chatHistory.find(s=>s.id===currentSessionId).messages.push({role:'user',content:txt});
+       $('#queryInput').val('').css('height','auto'); $('#chatContainer').append(`<div id="typingIndicator" class="flex pb-2"><div class="w-6 h-6 rounded bg-brand-600 flex-shrink-0 flex items-center justify-center mr-3"><i class="fas fa-cube text-white text-[10px]"></i></div><div class="flex items-center space-x-1 h-8"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`);
+       scrollToBottom();
+    }
+    function scrollToBottom(){const c=document.getElementById('chatContainer'); c.scrollTop=c.scrollHeight;}
+    window.setQuickQuery=function(t){$('#queryInput').val(t).focus();}
+    window.toggleImageMode=function(){isImageMode=!isImageMode; $('#queryForm').toggleClass('hidden'); $('#captionForm').toggleClass('hidden'); $('#currentModeText').html(isImageMode?'Image Mode':'Text Query');}
+    window.updateFileName=function(i){if(i.files[0])$('#fileLabel').text(i.files[0].name).addClass('text-brand-400');}
   </script>
 </body>
 </html>

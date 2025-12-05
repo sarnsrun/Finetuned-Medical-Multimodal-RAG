@@ -10,9 +10,24 @@ app = Flask(__name__, template_folder='templates')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# --- ROUTING CONFIGURATION ---
+
 @app.route('/')
-def home():
+def login():
+    """Renders the Login Gateway."""
+    return render_template('login.html')
+
+@app.route('/chat')
+def chat():
+    """Renders the User/Doctor Interface."""
     return render_template('index.html')
+
+@app.route('/expert')
+def expert():
+    """Renders the Expert/Admin Interface."""
+    return render_template('expert.html')
+
+# --- API ENDPOINTS ---
 
 @app.route('/query', methods=['POST'])
 def query():
@@ -89,7 +104,7 @@ def retrain():
     logger.info("Retraining the model...")
     try:
         retrain_gpt2()
-        reload_gpt2_model()  # <-- Reload the model after retraining
+        reload_gpt2_model()
         logger.info("Model retraining completed successfully.")
     except Exception as e:
         logger.error(f"Error during retraining: {e}")

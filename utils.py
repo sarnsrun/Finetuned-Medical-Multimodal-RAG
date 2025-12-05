@@ -5,16 +5,29 @@ import os
 import uuid
 import torch
 import csv
+import gc
 from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
 import Levenshtein
 import bert_score
+from datasets import load_dataset
+
+# Import specific classes for retraining
+from transformers import (
+    DataCollatorForLanguageModeling, 
+    TrainingArguments, 
+    Trainer, 
+    GPT2LMHeadModel, 
+    GPT2Tokenizer
+)
+from peft import LoraConfig, get_peft_model, TaskType
+
 from data import df, vectorizer, vqarad_answers, tokenize_function, faiss_index
 from models import (
     gpt2_model, gpt2_tokenizer, blip_model, blip_processor, embedder, device
 )
-from datasets import load_dataset
 
+# Load FAISS index
 index_text = faiss.read_index("medquad_embedder_small.index")
 
 def retrieve(query, top_k=3):
@@ -102,59 +115,73 @@ def save_feedback_blip(user_input: str, corrected_output: str, image_file=None):
         writer.writerow({"image_path": image_path, "caption": corrected_output.strip()})
 
 def retrain_gpt2():
-    from models import device
-    from peft import PeftConfig, get_peft_model
-    from transformers import DataCollatorForLanguageModeling, TrainingArguments, Trainer, GPT2LMHeadModel, GPT2Tokenizer
-    model = GPT2LMHeadModel.from_pretrained('gpt2-finetuned')
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-finetuned')
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    if not os.path.exists('medquad_cleaned_small.jsonl'):
+        raise Exception("No feedback data found (medquad_cleaned_small.jsonl missing). Please save some corrections first.")
+
+    # Using 'gpt2' base prevents "nested adapter" warnings, but if you want to keep knowledge,
+    # use your finetuned one. We suppress warnings by ignoring the existing config if possible.
+    base_model_id = "sarnsrun/gpt2-medquad-finetuned"
+    
+    print(f"Loading base model: {base_model_id}")
+    model = GPT2LMHeadModel.from_pretrained(base_model_id)
+    tokenizer = GPT2Tokenizer.from_pretrained(base_model_id)
     tokenizer.pad_token = tokenizer.eos_token
-    lora_config = PeftConfig.from_pretrained('gpt2-finetuned')
+
+    # 4. Prepare New LoRA Adapter
+    # We create a new configuration to retrain on the feedback
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=32,
+        target_modules=["c_attn"],
+        lora_dropout=0.05,
+        bias="none",
+        task_type=TaskType.CAUSAL_LM
+    )
+
+    # Wrap model
     model = get_peft_model(model, lora_config)
     model.to(device)
-    for param in model.parameters():
-        param.requires_grad = True
 
+    print("Loading feedback dataset...")
     df_retrain = load_dataset('json', data_files='medquad_cleaned_small.jsonl', split='train')
     tokenized_dataset = df_retrain.map(tokenize_function, batched=True)
+    
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     training_args = TrainingArguments(
-        output_dir="./gpt2-finetuned",
+        output_dir="./gpt2-retrained_checkpoints",
         overwrite_output_dir=True,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=16,
-        gradient_accumulation_steps=2,
-        num_train_epochs=5,
+        per_device_train_batch_size=4,
+        per_device_eval_batch_size=4,
+        gradient_accumulation_steps=4,
+        num_train_epochs=3,
         learning_rate=2e-4,
-        fp16=True,
-        bf16=False,
-        optim="adamw_torch_fused",
-        logging_dir="./logs-gpt2-finetuned-retrained",
-        logging_steps=2,
-        save_steps=2,
-        eval_steps=2,
-        save_total_limit=2,
-        eval_strategy="steps",
-        save_strategy="steps",
-        report_to="tensorboard",
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
-        greater_is_better=False
+        fp16=torch.cuda.is_available(),
+        logging_steps=5,
+        save_strategy="no",
+        report_to="none"
     )
 
-    shuffled_dataset = tokenized_dataset.shuffle(seed=42)
-    train_size = int(0.9 * len(shuffled_dataset))
-    train_dataset = shuffled_dataset.select(range(train_size))
-    eval_dataset = shuffled_dataset.select(range(train_size, len(shuffled_dataset)))
-
+    print("Starting training...")
     trainer = Trainer(
         model=model,
         args=training_args,
         data_collator=data_collator,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset
+        train_dataset=tokenized_dataset,
     )
 
     trainer.train()
-    model.save_pretrained("gpt2-lora-small")
-    tokenizer.save_pretrained("gpt2-lora-small")
+
+    output_dir = "gpt2-local-best"
+    print(f"Saving retrained model to {output_dir}...")
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+
+    # Cleanup
+    del model
+    del trainer
+    torch.cuda.empty_cache()
+    gc.collect()
